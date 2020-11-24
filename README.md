@@ -1,17 +1,12 @@
 # Data_Wrangling_Project_and_Tasks
-Data Wrangling Projects
+## Data Wrangling Projects
 
-This is a template for students enrolled in the QBS181: Data Wrangling course.
-Overview
+### This is a template for students enrolled in the QBS181: Data Wrangling course.
 
-Write some descriptions here...
+## Overview
 
-Add a statement about having received permission from the instructor to make your code public.
-Description of subdirectories
+### Add a statement about having received permission from the instructor to make your code public.
 
-Write description for each subdirectory (i.e. project) here...
+## Description of subdirectories
 
-Reminder: Please do NOT include data, results or response to the assignment questions in this repository. Include R and SQL code only.
-(Optional: Additional sections)
-
-You may include any additional information you would like others to know. This won't be graded.
+### Write description for each subdirectory (i.e. project) here...
