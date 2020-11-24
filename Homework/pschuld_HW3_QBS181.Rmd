@@ -1,0 +1,169 @@
+---
+title: "Homework 3"
+author: "f0040sz"
+date: "11/7/2020"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(nycflights13)
+library(ggplot2)
+library(lubridate)
+library(Rfacebook)
+library(tidyr)
+flights <- nycflights13::flights
+```
+
+## 1)
+#### a) - d)
+```{r}
+table2 <- table2 %>%
+  spread(key = type, value = count) %>%
+  mutate(ratePer10k = cases/population*10000)
+
+head(table2)
+
+table4a <- table4a %>% 
+  pivot_longer(c(`1999`, `2000`), names_to = "year", values_to = "cases")
+table4b <- table4b %>% 
+  pivot_longer(c(`1999`, `2000`), names_to = "year", values_to = "population")
+table4 <- left_join(table4a, table4b) %>%
+  mutate(ratePer10k = cases/population*10000)
+
+head(table4)
+```
+
+## 2)
+##### The code doesn't work because the column names need to be in quotes, since they are numeric values, but the column names are strings.
+```{r}
+data(table4a)
+table4a %>% gather('1999','2000',key="year",value="cases")
+```
+
+## 3)
+### a)
+#### See graphs below. Scheduled arrival times dropped in the middle of the year while arrival delays increased to a peak during this period. Arrival and departure delays hit a maximum in March. Arrival and Departure delays hit a minumum in October Scheduled arrival and departure times hit a minumum in December.
+```{r}
+# departures: combine year, month, and day columns and coerce to date format
+flights$date <- paste(flights$year, flights$month, flights$day, sep="-") %>%
+  ymd() 
+
+#### arrival and departure times
+# extract mean departure time
+mean_dep_time <- flights %>%
+  group_by(date) %>%
+  summarise(mean(dep_time, na.rm = TRUE))
+
+colnames(mean_dep_time)[2] <- "meanDepTime"
+
+# extract mean arrival time
+mean_arr_time <- flights %>%
+  group_by(date) %>%
+  summarise(mean(arr_time, na.rm = TRUE))
+
+colnames(mean_arr_time)[2] <- "meanArrTime"
+
+mean_dep_time$meanArrTime <- mean_arr_time$meanArrTime
+
+mean_dep_time %>%
+  ggplot(aes(x = date)) +
+  geom_line(aes(y = meanDepTime, color = "darkred")) + 
+  geom_line(aes(y = meanArrTime, color="steelblue"), linetype="twodash") +
+  scale_color_discrete(name = NULL, labels = c("Departures", "Arrivals")) +
+  xlab("Date") + ylab("Mean Departure/Arrival Time (minutes)") +
+  ggtitle("Mean Arrival/Departure Times")
+
+#### delays
+# extract mean departure time
+mean_dep_delay <- flights %>%
+  group_by(date) %>%
+  summarise(mean(dep_delay, na.rm = TRUE))
+
+colnames(mean_dep_delay)[2] <- "meanDepDelay"
+
+# extract mean arrival time
+mean_arr_delay <- flights %>%
+  group_by(date) %>%
+  summarise(mean(arr_delay, na.rm = TRUE))
+
+colnames(mean_arr_delay)[2] <- "meanArrDelay"
+
+mean_dep_delay$meanArrDelay <- mean_arr_delay$meanArrDelay
+
+mean_dep_delay %>%
+  ggplot(aes(x = date)) +
+  geom_line(aes(y = meanDepDelay, color = "darkred")) + 
+  geom_line(aes(y = meanArrDelay, color="steelblue"), linetype="twodash") +
+  scale_color_discrete(name = NULL, labels = c("Departures", "Arrivals")) +
+  xlab("Date") + ylab("Mean Delay Time (minutes)") +
+  ggtitle("Mean Arrival and Departure Delays")
+
+### Scheduled times
+# extract mean departure time
+mean_sched_dep <- flights %>%
+  group_by(date) %>%
+  summarise(mean(sched_dep_time, na.rm = TRUE))
+
+colnames(mean_sched_dep)[2] <- "meanSchedDep"
+
+# extract mean arrival time
+mean_sched_arr <- flights %>%
+  group_by(date) %>%
+  summarise(mean(sched_arr_time, na.rm = TRUE))
+
+colnames(mean_sched_arr)[2] <- "meanSchedArr"
+
+mean_sched_dep$meanSchedArr <- mean_sched_arr$meanSchedArr
+
+mean_sched_dep %>%
+  ggplot(aes(x = date)) +
+  geom_line(aes(y = meanSchedDep, color = "darkred")) + 
+  geom_line(aes(y = meanSchedArr, color="steelblue"), linetype="twodash") +
+  scale_color_discrete(name = NULL, labels = c("Departures", "Arrivals")) +
+  xlab("Date") + ylab("Mean Scheduled Time (minutes)") +
+  ggtitle("Mean Scheduled Arrivals and Departures")
+```
+
+#### b)
+##### Scheduled departure time, actual departure time, and departure delay are consistent. The departure delay variable is derived from taking the time difference between the actual and scheduled departure times. Using the code below, some of the time delays that I calculated are not equal to the departure delays in the dataset on the occasions that the scheduled departure time fell on a day before the actual time of departure, which is made ambiguous by the dataset because there is only one year, month, and day variable which corresponds to the scheduled departure time, but not the actual departure time in some cases. Visual inspection of these rows showed that the time difference for these columns is consistent.
+
+```{r}
+# collapse departure date and time into one variable
+flights$dep_time <- sprintf("%04d", flights$dep_time)
+flights$dep_time <- format(strptime(flights$dep_time, format="%H%M"), format = "%H:%M")
+flights$dep_time <- paste(flights$year, flights$month, flights$day, flights$dep_time, sep="-") %>% 
+  ymd_hm() 
+
+# collapse scheduled departure date and time into one variable
+flights$sched_dep_time <- sprintf("%04d", flights$sched_dep_time)
+flights$sched_dep_time <- format(strptime(flights$sched_dep_time, format="%H%M"), format = "%H:%M")
+flights$sched_dep_time <- paste(flights$year, flights$month, flights$day, flights$sched_dep_time, sep="-") %>% 
+  ymd_hm()
+
+# calculate time delay
+flights$time_delay <- difftime(flights$dep_time, flights$sched_dep_time, units = "mins")
+
+# examine unequal delay time and derived delay time variables
+head(flights[flights$dep_delay != flights$time_delay,])
+```
+
+#### c)
+##### True. Early departures in minutes 20-30 and 50-60 are caused by scheduled flights leaving early.
+```{r}
+# create logical variable for flight delay
+flights$delayed <- ifelse(flights$dep_delay > 0, 1, 0)
+
+view(head(flights[flights$delayed==0,], 10))
+```
+
+
+## 4)
+##### I don't have a Facebook account, but here is what I would do if I did:
+```{r eval=FALSE}
+fb_oauth <- fbOAuth(app_id="123456789", app_secret="1A2B3C4D")
+searchFacebook("black friday deals", token = 12345678, n = 200, 
+               since = NULL, until = NULL)
+```
+

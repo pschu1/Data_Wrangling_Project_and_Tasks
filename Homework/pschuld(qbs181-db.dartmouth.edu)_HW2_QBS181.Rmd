@@ -1,0 +1,150 @@
+---
+title: "pschuld(qbs181-db.dartmouth.edu)_HW2_QBS181"
+author: "f0040sz"
+date: "10/20/2020"
+output: pdf_document
+---
+
+# QBS 181 Homework 2
+# Phillip Schuld f0040sz
+
+```{r}
+# load libraries
+library(RODBC)
+library(dplyr)
+library(lubridate)
+```
+
+```{r}
+# open ODBC connections
+myConn <- odbcConnect("qbs 181", "pschuld",
+                      "pschuld@qbs181")
+
+# import datasets
+demo <- sqlQuery(myConn, "select * from Demographics")
+cond <- sqlQuery(myConn, "select * from Conditions")
+texts <- sqlQuery(myConn, "select * from Text")
+phone <- sqlQuery(myConn, "select * from Phonecall")
+phone_enc <- sqlQuery(myConn, "select * from Phonecall_encounter")
+duration <- sqlQuery(myConn, "select * from callduration") 
+```
+
+```{r}
+### 1) Create "Enrollment Status" column
+# merge phone call and phone call encounter data sets
+full_phone <- dplyr::inner_join(phone_enc, phone, by = c("CustomerId" = "tri_CustomerIDEntityReference"))
+# create empty column to take values
+full_phone$enrollmentGroup <- NA
+# loop to populate Enrollment Statuses
+for(i in 1:nrow(full_phone)) {
+  if(full_phone$EncounterCode[i] == 125060000) {
+    full_phone$enrollmentGroup[i] <- "Clinical Alert"
+  }
+  else if(full_phone$EncounterCode[i] == 125060001) {
+    full_phone$enrollmentGroup[i] <- "Health Coaching"
+  }
+  else if(full_phone$EncounterCode[i] == 125060002) {
+    full_phone$enrollmentGroup[i] <- "Technical Question"
+  }
+  else if(full_phone$EncounterCode[i] == 125060003) {
+    full_phone$enrollmentGroup[i] <- "Administrative"
+  }
+  else if(full_phone$EncounterCode[i] == 125060004) {
+    full_phone$enrollmentGroup[i] <- "Other"
+  }
+  else if(full_phone$EncounterCode[i] == 125060005) {
+    full_phone$enrollmentGroup[i] <- "Lack of engagement"
+  }
+}
+
+print(full_phone[sample(nrow(full_phone), 10), ])
+```
+
+```{r}
+# 2)
+# table for number of records for each group
+table(full_phone$enrollmentGroup)
+```
+
+```{r}
+# 3)
+phone_dur <- dplyr::inner_join(full_phone, duration, by = c("CustomerId" = "tri_CustomerIDEntityReference"))
+# drop redundant columns
+drop <- c("CallType.x","CallDuration.x", "CallOutcome.x")
+phone_dur <- phone_dur[, !(names(phone_dur) %in% drop)]
+names(phone_dur)[names(phone_dur) == "CallType.y"] <- "CallType"
+names(phone_dur)[names(phone_dur) == "CallDuration.y"] <- "CallDuration"
+names(phone_dur)[names(phone_dur) == "CallOutcome.y"] <- "CallOutcome"
+
+print(phone_dur[sample(nrow(phone_dur), 10), ])
+```
+
+```{r}
+# 4)
+# loop to change call type names
+for(i in 1:nrow(phone_dur)) {
+  if(phone_dur$CallType[i] == 1) {
+    phone_dur$CallType[i] <- "Inbound"
+  }
+  else if(phone_dur$CallType[i] == 2) {
+    phone_dur$CallType[i] <- "Outbound"
+  }
+}
+
+for(i in 1:nrow(phone_dur)) {
+  if(phone_dur$CallOutcome[i] == 1) {
+    phone_dur$CallOutcome[i] <- "No Response"
+  }
+  else if(phone_dur$CallOutcome[i] == 2) {
+    phone_dur$CallOutcome[i] <- "Left Voicemail"
+  }
+  else if(phone_dur$CallOutcome[i] == 3) {
+    phone_dur$CallOutcome[i] <- "Successful"
+  }
+}
+
+print(phone_dur[sample(nrow(phone_dur), 10), ])
+
+# number of call types and call outcomes
+table(phone_dur$CallType, phone_dur$CallOutcome)
+# duration of phone calls for different enrollment groups
+phone_dur %>%
+  group_by(enrollmentGroup) %>%
+  summarise(sum(CallDuration))
+```
+
+```{r}
+# 5)
+# merge 3 tables
+demo_2 <- dplyr::inner_join(demo, cond, by = c("contactid" = "tri_patientid"))
+demo_3 <- dplyr::inner_join(demo_2, texts, by = c("contactid" = "tri_contactId"))
+# convert text sent date to datetime object
+demo_3$TextSentDate <- as.Date(demo_3$TextSentDate)
+
+print(demo_3[sample(nrow(demo_3), 10), ])
+```
+
+```{r}
+# number of text messages by sender
+demo_3 <- demo_3 %>%
+  mutate(week = cut.Date(TextSentDate, breaks = "1 week", labels = FALSE))
+
+demo_3 %>%
+  group_by(week, SenderName) %>%
+  summarise(n())
+
+demo_3 %>%
+  group_by(week, SenderName) %>%
+  summarise(n())
+
+```
+
+```{r}
+# 6) 
+# Number of text messages per week by chronic conditon
+demo_3 %>%
+  group_by(week, tri_name) %>%
+  summarise(n())
+```
+
+
