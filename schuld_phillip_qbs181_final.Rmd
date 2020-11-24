@@ -97,6 +97,7 @@ baseline_follow_up <- baseline_follow_up %>%
 
 ### e)
 ```{r}
+# summary statistics for baseline and follow-up scoring
 print(paste("Average Baseline Systolic BP:", round(mean(baseline_follow_up$SystolicValue[baseline_follow_up$time_point == "baseline"], na.rm = TRUE))))
 print(paste("Average Follow-Up Systolic BP:", round(mean(baseline_follow_up$SystolicValue[baseline_follow_up$time_point == "follow up"], na.rm = TRUE))))
 print(paste("Average Baseline Diastolic BP:", round(mean(baseline_follow_up$Diastolicvalue[baseline_follow_up$time_point == "baseline"], na.rm = TRUE))))
@@ -122,12 +123,15 @@ paste(sum(controlled_id %in% uncontrolled_id), "individuals went from uncontroll
 
 ## 3)
 ```{r}
+# load tabls from sql
 cond <- sqlQuery(myConn, "select * from Conditions")
 text <- sqlQuery(myConn, "select * from Text")
 
+# merge three tables
 merged_2 <- merge(demo, cond, by.x = "contactid", by.y = "tri_patientid")
 merged_2 <- merge(merged_2, text, by.x = "contactid", by.y = "tri_contactId")
 
+# remove row with latest text sent data for each contactid
 latest_text <- merged_2 %>%
   group_by(contactid) %>%
   slice(which.min(TextSentDate))
